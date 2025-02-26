@@ -1,4 +1,4 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
+from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult, MessageChain
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.api.message_components import *
@@ -135,10 +135,11 @@ class MyPlugin(Star):
                     logger.info("定时任务：时间匹配，准备发送消息")
                     image_data = await send_image()
                     if image_data['url']:
-                        chain = [
+                        chain = MessageChain()
+                        chain.chain.extend([
                             Plain(f"摸鱼时间到了\n{image_data['title']}！"),
                             Image(file=image_data['url']),
-                        ]
+                        ])
                         # 使用保存的消息目标发送消息
                         logger.info(f"定时任务：开始发送消息，图片URL：{image_data['url']}")
                         try:

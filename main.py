@@ -77,12 +77,12 @@ class MyPlugin(Star):
     async def send_image(self):
         async with aiohttp.ClientSession() as session:
             async with session.get('https://api.vvhan.com/api/moyu?type=json') as res:
-                if not res.success:
-                    return res.message
+                if res.status != 200:
+                    return {'url': '', 'time': '未知时间'}
+                data = await res.json()
                 return {
-                    'url': res.url,
-                    'title': res.title,
-                    'time': res.time,
+                    'url': data['data']['url'],
+                    'time': data['data']['time'],
                 }
             
 

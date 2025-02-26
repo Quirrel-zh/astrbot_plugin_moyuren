@@ -1,6 +1,6 @@
 name: 摸鱼人日历 # 这是你的插件的唯一识别名。
 desc: 摸鱼人日历，支持自定义时间，自定义检测间隔，支持立即发送。 # 插件简短描述
-help: 输入 /set_time 定时时间（格式：HH:MM或HHMM） 检测间隔（分钟） 设置时间，输入 /reset_time 重置时间，输入 /execute_now 立即发送。 # 插件的帮助信息
-version: v1.2.1 # 插件版本号。格式：v1.1.1 或者 v1.1
+help: 输入 /set_time 定时时间（格式：HH:MM或HHMM） 检测间隔（分钟，可选） 设置时间，输入 /reset_time 重置时间，输入 /execute_now 立即发送。 # 插件的帮助信息
+version: v1.2.2 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: quirrel-zh # 作者
 repo: https://github.com/quirrel-zh/astrbot_plugin_moyuren # 插件的仓库地址

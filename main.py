@@ -14,7 +14,7 @@ user_custom_loop = None
 class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.context.loop.create_task(self.scheduled_task())
+        asyncio.get_event_loop().create_task(self.scheduled_task())
     
 
     @filter.command("set_time")
@@ -57,16 +57,29 @@ class MyPlugin(Star):
             async with aiohttp.ClientSession() as session:
                 async with session.get('https://api.vvhan.com/api/moyu?type=json') as res:
                     if res.status != 200:
-                        return {'url': '', 'time': '未知时间'}
-                    data = await res.json()
-                    return {
-                        'url': data['data']['url'],
-                        'time': data['data']['time'],
-                    }
+                        logger.error(f"API请求失败: {res.status}")
+                        return {'url': '', 'time': '未知时间', 'title': '获取失败'}
+                    try:
+                        data = await res.json()
+                        logger.info(f"API响应: {data}")
+                        if not data.get('success'):
+                            return {'url': '', 'time': '未知时间', 'title': '获取失败'}
+                        return {
+                            'url': data.get('url', ''),
+                            'time': data.get('time', ''),
+                            'title': data.get('title', '摸鱼提醒')
+                        }
+                    except Exception as e:
+                        logger.error(f"处理API响应时出错: {str(e)}")
+                        return {'url': '', 'time': '未知时间', 'title': '处理失败'}
         
         image_data = await send_image()
+        if not image_data['url']:
+            yield event.plain_result("获取摸鱼图片失败，请稍后再试")
+            return
+            
         chain = [
-            Plain(f"摸鱼时间到了，今天是{image_data['time']}！"),
+            Plain(f"摸鱼时间到了，{image_data['title']}！"),
             Image(file=image_data['url']),
         ]
         yield event.chain_result(chain)
@@ -76,24 +89,37 @@ class MyPlugin(Star):
             async with aiohttp.ClientSession() as session:
                 async with session.get('https://api.vvhan.com/api/moyu?type=json') as res:
                     if res.status != 200:
-                        return {'url': '', 'time': '未知时间'}
-                    data = await res.json()
-                    return {
-                        'url': data['data']['url'],
-                        'time': data['data']['time'],
-                    }
+                        logger.error(f"API请求失败: {res.status}")
+                        return {'url': '', 'time': '未知时间', 'title': '获取失败'}
+                    try:
+                        data = await res.json()
+                        logger.info(f"API响应: {data}")
+                        if not data.get('success'):
+                            return {'url': '', 'time': '未知时间', 'title': '获取失败'}
+                        return {
+                            'url': data.get('url', ''),
+                            'time': data.get('time', ''),
+                            'title': data.get('title', '摸鱼提醒')
+                        }
+                    except Exception as e:
+                        logger.error(f"处理API响应时出错: {str(e)}")
+                        return {'url': '', 'time': '未知时间', 'title': '处理失败'}
                     
         while True:
-            now = datetime.datetime.now()
-            target_time = user_custom_time or '09:00'
-            target_hour, target_minute = map(int, target_time.split(':'))
-            if now.hour == target_hour and now.minute == target_minute:
-                image_data = await send_image()
-                chain = [
-                    Plain(f"摸鱼时间到了，今天是{image_data['time']}！"),
-                    Image(file=image_data['url']),
-                ]
-                # TODO: 这里需要处理消息发送
-                await self.context.send_message(chain)
-            await asyncio.sleep(user_custom_loop * 60 if user_custom_loop else 60)  # 默认1分钟检查一次
+            try:
+                now = datetime.datetime.now()
+                target_time = user_custom_time or '09:00'
+                target_hour, target_minute = map(int, target_time.split(':'))
+                if now.hour == target_hour and now.minute == target_minute:
+                    image_data = await send_image()
+                    if image_data['url']:
+                        chain = [
+                            Plain(f"摸鱼时间到了，{image_data['title']}！"),
+                            Image(file=image_data['url']),
+                        ]
+                        await self.context.send_message(chain)
+                await asyncio.sleep(user_custom_loop * 60 if user_custom_loop else 60)  # 默认1分钟检查一次
+            except Exception as e:
+                logger.error(f"定时任务出错: {str(e)}")
+                await asyncio.sleep(60)  # 出错后等待1分钟再试
 

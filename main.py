@@ -52,37 +52,48 @@ class MyPlugin(Star):
 
     @filter.command("execute_now")
     async def execute_now(self, event: AstrMessageEvent):
-        '''立即发送一条包含文字和图片的消息'''  
-        image_data = await self.send_image()
+        '''立即发送一条包含文字和图片的消息'''
+        async def send_image():
+            async with aiohttp.ClientSession() as session:
+                async with session.get('https://api.vvhan.com/api/moyu?type=json') as res:
+                    if res.status != 200:
+                        return {'url': '', 'time': '未知时间'}
+                    data = await res.json()
+                    return {
+                        'url': data['data']['url'],
+                        'time': data['data']['time'],
+                    }
+        
+        image_data = await send_image()
         chain = [
             Plain(f"摸鱼时间到了，今天是{image_data['time']}！"),
             Image(file=image_data['url']),
         ]
         yield event.chain_result(chain)
 
-    async def scheduled_task(self, event: AstrMessageEvent):
+    async def scheduled_task(self):
+        async def send_image():
+            async with aiohttp.ClientSession() as session:
+                async with session.get('https://api.vvhan.com/api/moyu?type=json') as res:
+                    if res.status != 200:
+                        return {'url': '', 'time': '未知时间'}
+                    data = await res.json()
+                    return {
+                        'url': data['data']['url'],
+                        'time': data['data']['time'],
+                    }
+                    
         while True:
             now = datetime.datetime.now()
             target_time = user_custom_time or '09:00'
             target_hour, target_minute = map(int, target_time.split(':'))
             if now.hour == target_hour and now.minute == target_minute:
-                image_data = await self.send_image()
+                image_data = await send_image()
                 chain = [
                     Plain(f"摸鱼时间到了，今天是{image_data['time']}！"),
-                    Image(file=f"{image_data['url']}"),
+                    Image(file=image_data['url']),
                 ]
-                yield event.chain_result(chain)
-            await asyncio.sleep(user_custom_loop * 60)  # 根据输入分钟检查
-
-    async def send_image(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get('https://api.vvhan.com/api/moyu?type=json') as res:
-                if res.status != 200:
-                    return {'url': '', 'time': '未知时间'}
-                data = await res.json()
-                return {
-                    'url': data['data']['url'],
-                    'time': data['data']['time'],
-                }
-            
+                # TODO: 这里需要处理消息发送
+                await self.context.send_message(chain)
+            await asyncio.sleep(user_custom_loop * 60 if user_custom_loop else 60)  # 默认1分钟检查一次
 

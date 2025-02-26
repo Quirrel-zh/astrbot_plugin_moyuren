@@ -1,28 +1,15 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult, MessageChain
+from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.api.message_components import *
 import asyncio
 import datetime
 import aiohttp
-import time
-import ntplib
 
 # 定义全局变量来存储用户自定义时间和消息发送目标
 user_custom_time = None
 user_custom_loop = None
 message_target = None  # 用于存储消息发送目标
-
-async def get_network_time():
-    '''获取网络时间'''
-    try:
-        ntp_client = ntplib.NTPClient()
-        response = await asyncio.get_event_loop().run_in_executor(None, ntp_client.request, 'pool.ntp.org')
-        return datetime.datetime.fromtimestamp(response.tx_time)
-    except Exception as e:
-        logger.error(f"获取网络时间失败: {str(e)}")
-        # 如果获取网络时间失败，则使用本地时间
-        return datetime.datetime.now()
 
 @register("moyuren", "quirrel", "一个简单的摸鱼人日历插件", "1.2.1", "https://github.com/Quirrel-zh/astrbot_plugin_moyuren")
 class MyPlugin(Star):
@@ -103,8 +90,11 @@ class MyPlugin(Star):
             yield event.plain_result("获取摸鱼图片失败，请稍后再试")
             return
             
-        message_chain = MessageChain().message(f"摸鱼时间到了\n{image_data['title']}！").url_image(image_data['url'])
-        yield event.make_result().message(f"摸鱼时间到了\n{image_data['title']}！").url_image(image_data['url'])
+        chain = [
+            Plain(f"摸鱼时间到了\n{image_data['title']}！"),
+            Image(file=image_data['url']),
+        ]
+        yield event.chain_result(chain)
 
     async def scheduled_task(self):
         async def send_image():
@@ -135,21 +125,24 @@ class MyPlugin(Star):
                     await asyncio.sleep(60)
                     continue
 
-                now = await get_network_time()
+                now = datetime.datetime.now()
                 target_hour, target_minute = map(int, user_custom_time.split(':'))
                 
-                logger.info(f"定时任务：当前网络时间 {now.hour:02d}:{now.minute:02d}，目标时间 {target_hour:02d}:{target_minute:02d}")
+                logger.info(f"定时任务：当前时间 {now.hour:02d}:{now.minute:02d}，目标时间 {target_hour:02d}:{target_minute:02d}")
                 logger.info(f"定时任务：消息目标 {message_target}，检查间隔 {user_custom_loop} 分钟")
                 
                 if now.hour == target_hour and now.minute == target_minute:
                     logger.info("定时任务：时间匹配，准备发送消息")
                     image_data = await send_image()
                     if image_data['url']:
+                        chain = [
+                            Plain(f"摸鱼时间到了\n{image_data['title']}！"),
+                            Image(file=image_data['url']),
+                        ]
                         # 使用保存的消息目标发送消息
                         logger.info(f"定时任务：开始发送消息，图片URL：{image_data['url']}")
                         try:
-                            message_chain = MessageChain().message(f"摸鱼时间到了\n{image_data['title']}！").url_image(image_data['url'])
-                            await self.context.send_message(message_target, message_chain)
+                            await self.context.send_message(message_target, chain)
                             logger.info("定时任务：消息发送成功")
                         except Exception as e:
                             logger.error(f"定时任务：发送消息失败：{str(e)}")

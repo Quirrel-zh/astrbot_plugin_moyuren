@@ -121,13 +121,18 @@ class MyPlugin(Star):
             try:
                 # 如果没有设置时间或目标，就跳过
                 if not user_custom_time or not message_target:
+                    logger.info("定时任务：未设置时间或消息目标，跳过检查")
                     await asyncio.sleep(60)
                     continue
 
                 now = datetime.datetime.now()
                 target_hour, target_minute = map(int, user_custom_time.split(':'))
                 
+                logger.info(f"定时任务：当前时间 {now.hour:02d}:{now.minute:02d}，目标时间 {target_hour:02d}:{target_minute:02d}")
+                logger.info(f"定时任务：消息目标 {message_target}，检查间隔 {user_custom_loop} 分钟")
+                
                 if now.hour == target_hour and now.minute == target_minute:
+                    logger.info("定时任务：时间匹配，准备发送消息")
                     image_data = await send_image()
                     if image_data['url']:
                         chain = [
@@ -135,13 +140,24 @@ class MyPlugin(Star):
                             Image(file=image_data['url']),
                         ]
                         # 使用保存的消息目标发送消息
-                        await self.context.send_message(message_target, chain)
-                        logger.info(f"定时任务已发送消息到 {message_target}")
+                        logger.info(f"定时任务：开始发送消息，图片URL：{image_data['url']}")
+                        try:
+                            await self.context.send_message(message_target, chain)
+                            logger.info("定时任务：消息发送成功")
+                        except Exception as e:
+                            logger.error(f"定时任务：发送消息失败：{str(e)}")
                         # 等待一分钟，避免在同一分钟内重复发送
                         await asyncio.sleep(60)
-                    
-                await asyncio.sleep(user_custom_loop * 60 if user_custom_loop else 60)  # 默认1分钟检查一次
+                    else:
+                        logger.error("定时任务：获取图片失败，跳过本次发送")
+                
+                sleep_time = user_custom_loop * 60 if user_custom_loop else 60
+                logger.info(f"定时任务：等待 {sleep_time} 秒后进行下一次检查")
+                await asyncio.sleep(sleep_time)
             except Exception as e:
                 logger.error(f"定时任务出错: {str(e)}")
+                logger.error(f"错误详情: {e.__class__.__name__}")
+                import traceback
+                logger.error(f"堆栈信息: {traceback.format_exc()}")
                 await asyncio.sleep(60)  # 出错后等待1分钟再试
 

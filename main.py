@@ -6,30 +6,34 @@ import asyncio
 import datetime
 import aiohttp
 
-# 定义一个全局变量来存储用户自定义时间
+# 定义全局变量来存储用户自定义时间和消息发送目标
 user_custom_time = None
 user_custom_loop = None
+message_target = None  # 用于存储消息发送目标
 
-@register("helloworld", "Your Name", "一个简单的 Hello World 插件", "1.0.0", "repo url")
+@register("moyuren", "quirrel", "一个简单的摸鱼人日历插件", "1.2.1", "https://github.com/Quirrel-zh/astrbot_plugin_moyuren")
 class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
         asyncio.get_event_loop().create_task(self.scheduled_task())
     
-
     @filter.command("set_time")
     async def set_time(self, event: AstrMessageEvent, time: str, loop: int):
         '''设置发送摸鱼图片的时间 格式为 HH:MM'''
-        global user_custom_time, user_custom_loop
+        global user_custom_time, user_custom_loop, message_target
         time = time.strip()
         try:
+            # 尝试处理 HH:MM 格式
             hour, minute = map(int, time.split(':'))
             if hour < 0 or hour > 23 or minute < 0 or minute > 59:
                 yield event.plain_result("时间格式错误，请输入正确的格式，例如：09:00或0900")
                 return
-            user_custom_time = time
+            # 统一存储为 HH:MM 格式
+            user_custom_time = f"{hour:02d}:{minute:02d}"
             user_custom_loop = loop
-            yield event.plain_result(f"自定义时间已设置为: {time}，每{loop}分钟检测一次")
+            # 保存消息发送目标
+            message_target = event.unified_msg_origin
+            yield event.plain_result(f"自定义时间已设置为: {user_custom_time}，每{loop}分钟检测一次")
         except ValueError:
             try: 
                 '''如果用户输入的时间格式为 HHMM'''
@@ -39,15 +43,23 @@ class MyPlugin(Star):
                     if hour < 0 or hour > 23 or minute < 0 or minute > 59:
                         yield event.plain_result("时间格式错误，请输入正确的格式，例如：09:00或0900")
                         return
-                    user_custom_time = time
-                    yield event.plain_result(f"自定义时间已设置为: {time}")
+                    # 统一存储为 HH:MM 格式
+                    user_custom_time = f"{hour:02d}:{minute:02d}"
+                    user_custom_loop = loop
+                    # 保存消息发送目标
+                    message_target = event.unified_msg_origin
+                    yield event.plain_result(f"自定义时间已设置为: {user_custom_time}，每{loop}分钟检测一次")
+                else:
+                    yield event.plain_result("时间格式错误，请输入正确的格式，例如：09:00或0900")
             except ValueError:
                 yield event.plain_result("时间格式错误，请输入正确的格式，例如：09:00或0900")
+
     @filter.command("reset_time")
     async def reset_time(self, event: AstrMessageEvent):
         '''重置发送摸鱼图片的时间'''
-        global user_custom_time
+        global user_custom_time, message_target
         user_custom_time = None
+        message_target = None
         yield event.plain_result("自定义时间已重置")
 
     @filter.command("execute_now")
@@ -79,7 +91,7 @@ class MyPlugin(Star):
             return
             
         chain = [
-            Plain(f"摸鱼时间到了，{image_data['title']}！"),
+            Plain(f"摸鱼时间到了\n{image_data['title']}！"),
             Image(file=image_data['url']),
         ]
         yield event.chain_result(chain)
@@ -107,17 +119,27 @@ class MyPlugin(Star):
                     
         while True:
             try:
+                # 如果没有设置时间或目标，就跳过
+                if not user_custom_time or not message_target:
+                    await asyncio.sleep(60)
+                    continue
+
                 now = datetime.datetime.now()
-                target_time = user_custom_time or '09:00'
-                target_hour, target_minute = map(int, target_time.split(':'))
+                target_hour, target_minute = map(int, user_custom_time.split(':'))
+                
                 if now.hour == target_hour and now.minute == target_minute:
                     image_data = await send_image()
                     if image_data['url']:
                         chain = [
-                            Plain(f"摸鱼时间到了，{image_data['title']}！"),
+                            Plain(f"摸鱼时间到了\n{image_data['title']}！"),
                             Image(file=image_data['url']),
                         ]
-                        await self.context.send_message(chain)
+                        # 使用保存的消息目标发送消息
+                        await self.context.send_message(message_target, chain)
+                        logger.info(f"定时任务已发送消息到 {message_target}")
+                        # 等待一分钟，避免在同一分钟内重复发送
+                        await asyncio.sleep(60)
+                    
                 await asyncio.sleep(user_custom_loop * 60 if user_custom_loop else 60)  # 默认1分钟检查一次
             except Exception as e:
                 logger.error(f"定时任务出错: {str(e)}")

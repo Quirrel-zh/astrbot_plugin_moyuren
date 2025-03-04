@@ -5,6 +5,8 @@ from astrbot.api.message_components import *
 import asyncio
 import datetime
 import aiohttp
+import os
+import tempfile
 
 # 定义全局变量来存储用户自定义时间和消息发送目标
 user_custom_time = None
@@ -18,6 +20,7 @@ class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
         asyncio.get_event_loop().create_task(self.scheduled_task())
+        self.temp_dir = tempfile.mkdtemp()  # 创建临时目录
 
     async def get_moyu_image(self):
         '''获取摸鱼人日历图片'''
@@ -27,9 +30,12 @@ class MyPlugin(Star):
                     if res.status != 200:
                         logger.error(f"API请求失败: {res.status}")
                         return None
-                    # 直接读取图片内容
+                    # 保存图片到临时文件
                     image_data = await res.read()
-                    return image_data
+                    temp_path = os.path.join(self.temp_dir, 'moyu.jpg')
+                    with open(temp_path, 'wb') as f:
+                        f.write(image_data)
+                    return temp_path
         except Exception as e:
             logger.error(f"获取摸鱼图片时出错: {str(e)}")
             return None
@@ -82,8 +88,8 @@ class MyPlugin(Star):
     @filter.command("execute_now")
     async def execute_now(self, event: AstrMessageEvent):
         '''立即发送！'''
-        image_data = await self.get_moyu_image()
-        if not image_data:
+        image_path = await self.get_moyu_image()
+        if not image_path:
             yield event.plain_result("获取摸鱼图片失败，请稍后再试")
             return
 
@@ -93,7 +99,7 @@ class MyPlugin(Star):
             Plain("━━━━━━━━━━\n"),
             Plain(f"🎯 {current_time}\n"),
             Plain("━━━━━━━━━━\n"),
-            Image(data=image_data),  # 使用 data 参数传递图片数据
+            Image.fromFileSystem(image_path),  # 使用 fromFileSystem 方法
             Plain("\n⏰ 摸鱼提醒：工作再累，一定不要忘记摸鱼哦 ~")
         ]
         yield event.chain_result(chain)
@@ -110,8 +116,8 @@ class MyPlugin(Star):
                 target_hour, target_minute = map(int, user_custom_time.split(':'))
 
                 if now.hour == target_hour and now.minute == target_minute:
-                    image_data = await self.get_moyu_image()
-                    if image_data:
+                    image_path = await self.get_moyu_image()
+                    if image_path:
                         current_time = now.strftime("%Y-%m-%d %H:%M")
                         chain = MessageChain()
                         chain.chain.extend([
@@ -119,7 +125,7 @@ class MyPlugin(Star):
                             Plain("━━━━━━━━━━\n"),
                             Plain(f"🎯 {current_time}\n"),
                             Plain("━━━━━━━━━━\n"),
-                            Image(data=image_data),  # 使用 data 参数传递图片数据
+                            Image.fromFileSystem(image_path),  # 使用 fromFileSystem 方法
                             Plain("\n⏰ 摸鱼提醒：工作再累，一定不要忘记摸鱼哦 ~")
                         ])
                         try:

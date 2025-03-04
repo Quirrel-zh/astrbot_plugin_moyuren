@@ -11,12 +11,14 @@ user_custom_time = None
 user_custom_loop = None
 message_target = None  # 用于存储消息发送目标
 
-@register("moyuren", "quirrel", "一个简单的摸鱼人日历插件", "1.2.1", "https://github.com/Quirrel-zh/astrbot_plugin_moyuren")
+
+@register("moyuren", "quirrel", "一个简单的摸鱼人日历插件", "1.2.1",
+          "https://github.com/Quirrel-zh/astrbot_plugin_moyuren")
 class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
         asyncio.get_event_loop().create_task(self.scheduled_task())
-    
+
     @filter.command("set_time")
     async def set_time(self, event: AstrMessageEvent, time: str, loop: int = 1):
         '''设置发送摸鱼图片的时间 格式为 HH:MM或HHMM 后面可跟检测间隔（单位分钟，默认为1，不建议太久可能会导致跳过）'''
@@ -35,7 +37,7 @@ class MyPlugin(Star):
             message_target = event.unified_msg_origin
             yield event.plain_result(f"自定义时间已设置为: {user_custom_time}，每{loop}分钟检测一次")
         except ValueError:
-            try: 
+            try:
                 '''如果用户输入的时间格式为 HHMM'''
                 if len(time) == 4:
                     hour = int(time[:2])
@@ -65,60 +67,48 @@ class MyPlugin(Star):
     @filter.command("execute_now")
     async def execute_now(self, event: AstrMessageEvent):
         '''立即发送！'''
-        async def send_image():
-            async with aiohttp.ClientSession() as session:
-                async with session.get('https://api.vvhan.com/api/moyu?type=json') as res:
-                    if res.status != 200:
-                        logger.error(f"API请求失败: {res.status}")
-                        return {'url': '', 'time': '未知时间', 'title': '获取失败'}
-                    try:
-                        data = await res.json()
-                        if not data.get('success'):
-                            return {'url': '', 'time': '未知时间', 'title': '获取失败'}
-                        return {
-                            'url': data.get('url', ''),
-                            'time': data.get('time', ''),
-                            'title': data.get('title', '摸鱼提醒')
-                        }
-                    except Exception as e:
-                        logger.error(f"处理API响应时出错: {str(e)}")
-                        return {'url': '', 'time': '未知时间', 'title': '处理失败'}
-        
-        image_data = await send_image()
-        if not image_data['url']:
+
+        async def get_moyu_image():
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get('https://api.52vmy.cn/api/wl/moyu') as res:
+                        if res.status != 200:
+                            logger.error(f"API请求失败: {res.status}")
+                            return None
+                        return res.url
+            except Exception as e:
+                logger.error(f"获取摸鱼图片时出错: {str(e)}")
+                return None
+
+        image_url = await get_moyu_image()
+        if not image_url:
             yield event.plain_result("获取摸鱼图片失败，请稍后再试")
             return
-            
+
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
         chain = [
             Plain("📅 摸鱼人日历\n"),
             Plain("━━━━━━━━━━\n"),
-            Plain(f"🎯 {image_data['time']}\n"),
+            Plain(f"🎯 {current_time}\n"),
             Plain("━━━━━━━━━━\n"),
-            Image(file=image_data['url']),
+            Image(file=image_url),
             Plain("\n⏰ 摸鱼提醒：工作再累，一定不要忘记摸鱼哦 ~")
         ]
         yield event.chain_result(chain)
 
     async def scheduled_task(self):
-        async def send_image():
-            async with aiohttp.ClientSession() as session:
-                async with session.get('https://api.vvhan.com/api/moyu?type=json') as res:
-                    if res.status != 200:
-                        logger.error(f"API请求失败: {res.status}")
-                        return {'url': '', 'time': '未知时间', 'title': '获取失败'}
-                    try:
-                        data = await res.json()
-                        if not data.get('success'):
-                            return {'url': '', 'time': '未知时间', 'title': '获取失败'}
-                        return {
-                            'url': data.get('url', ''),
-                            'time': data.get('time', ''),
-                            'title': data.get('title', '摸鱼提醒')
-                        }
-                    except Exception as e:
-                        logger.error(f"处理API响应时出错: {str(e)}")
-                        return {'url': '', 'time': '未知时间', 'title': '处理失败'}
-                    
+        async def get_moyu_image():
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get('https://api.52vmy.cn/api/wl/moyu') as res:
+                        if res.status != 200:
+                            logger.error(f"API请求失败: {res.status}")
+                            return None
+                        return res.url
+            except Exception as e:
+                logger.error(f"获取摸鱼图片时出错: {str(e)}")
+                return None
+
         while True:
             try:
                 # 如果没有设置时间或目标，就跳过
@@ -128,17 +118,18 @@ class MyPlugin(Star):
 
                 now = datetime.datetime.now()
                 target_hour, target_minute = map(int, user_custom_time.split(':'))
-                
+
                 if now.hour == target_hour and now.minute == target_minute:
-                    image_data = await send_image()
-                    if image_data['url']:
+                    image_url = await get_moyu_image()
+                    if image_url:
+                        current_time = now.strftime("%Y-%m-%d %H:%M")
                         chain = MessageChain()
                         chain.chain.extend([
                             Plain("📅 摸鱼人日历\n"),
                             Plain("━━━━━━━━━━\n"),
-                            Plain(f"🎯 {image_data['time']}\n"),
+                            Plain(f"🎯 {current_time}\n"),
                             Plain("━━━━━━━━━━\n"),
-                            Image(file=image_data['url']),
+                            Image(file=image_url),
                             Plain("\n⏰ 摸鱼提醒：工作再累，一定不要忘记摸鱼哦 ~")
                         ])
                         try:
@@ -149,7 +140,7 @@ class MyPlugin(Star):
                         await asyncio.sleep(60)
                     else:
                         logger.error("获取图片失败，跳过本次发送")
-                
+
                 sleep_time = user_custom_loop * 60 if user_custom_loop else 60
                 await asyncio.sleep(sleep_time)
             except Exception as e:

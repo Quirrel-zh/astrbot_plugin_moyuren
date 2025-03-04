@@ -19,6 +19,21 @@ class MyPlugin(Star):
         super().__init__(context)
         asyncio.get_event_loop().create_task(self.scheduled_task())
 
+    async def get_moyu_image(self):
+        '''获取摸鱼人日历图片'''
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get('https://api.52vmy.cn/api/wl/moyu') as res:
+                    if res.status != 200:
+                        logger.error(f"API请求失败: {res.status}")
+                        return None
+                    # 直接读取图片内容
+                    image_data = await res.read()
+                    return image_data
+        except Exception as e:
+            logger.error(f"获取摸鱼图片时出错: {str(e)}")
+            return None
+
     @filter.command("set_time")
     async def set_time(self, event: AstrMessageEvent, time: str, loop: int = 1):
         '''设置发送摸鱼图片的时间 格式为 HH:MM或HHMM 后面可跟检测间隔（单位分钟，默认为1，不建议太久可能会导致跳过）'''
@@ -67,7 +82,7 @@ class MyPlugin(Star):
     @filter.command("execute_now")
     async def execute_now(self, event: AstrMessageEvent):
         '''立即发送！'''
-        image_data = await get_moyu_image()
+        image_data = await self.get_moyu_image()
         if not image_data:
             yield event.plain_result("获取摸鱼图片失败，请稍后再试")
             return
@@ -84,20 +99,6 @@ class MyPlugin(Star):
         yield event.chain_result(chain)
 
     async def scheduled_task(self):
-        async def get_moyu_image():
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get('https://api.52vmy.cn/api/wl/moyu') as res:
-                        if res.status != 200:
-                            logger.error(f"API请求失败: {res.status}")
-                            return None
-                        # 直接读取图片内容
-                        image_data = await res.read()
-                        return image_data
-            except Exception as e:
-                logger.error(f"获取摸鱼图片时出错: {str(e)}")
-                return None
-
         while True:
             try:
                 # 如果没有设置时间或目标，就跳过
@@ -109,7 +110,7 @@ class MyPlugin(Star):
                 target_hour, target_minute = map(int, user_custom_time.split(':'))
 
                 if now.hour == target_hour and now.minute == target_minute:
-                    image_data = await get_moyu_image()
+                    image_data = await self.get_moyu_image()
                     if image_data:
                         current_time = now.strftime("%Y-%m-%d %H:%M")
                         chain = MessageChain()

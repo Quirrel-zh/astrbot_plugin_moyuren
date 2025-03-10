@@ -2,7 +2,7 @@
 AstrBot 插件
 
 # 指令
-使用`/set_time 时间`来设置定时，时间格式为`HH:MM`或`HHMM`，每分钟检测一次 到时间发送摸鱼日历。 
+使用`/set_time 时间`来设置定时，时间格式为`HH:MM`或`HHMM`，每分钟检测一次 到时间发送摸鱼日历。  
 使用`/execute_now`立马发送摸鱼日历  
 使用`/reset_time`重置时间  
 

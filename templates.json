@@ -1,0 +1,24 @@
+{
+    "templates": [
+        {
+            "name": "默认样式",
+            "format": "摸鱼人日历\n当前时间：{time}"
+        },
+        {
+            "name": "可爱样式",
+            "format": "🐟 摸鱼人日历 🐟\n⏰ 当前时间：{time}\n记得休息哦~ (◕‿◕✿)"
+        },
+        {
+            "name": "商务样式",
+            "format": "【摸鱼人日历】\n━━━━━━━━━\n⏲ 时间：{time}\n━━━━━━━━━"
+        },
+        {
+            "name": "简约样式",
+            "format": "▎摸鱼人日历\n▎{time}"
+        }
+    ],
+    "default_template": {
+        "name": "默认样式",
+        "format": "摸鱼人日历\n当前时间：{time}"
+    }
+} 

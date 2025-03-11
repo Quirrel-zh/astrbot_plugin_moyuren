@@ -1,148 +1,125 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult, MessageChain
+from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
-from astrbot.api.message_components import *
-import asyncio
-import datetime
-import aiohttp
+from astrbot.api.event.filter import event_message_type, EventMessageType
 import os
 import tempfile
+import traceback
 
-# 定义全局变量来存储用户自定义时间和消息发送目标
-user_custom_time = None
-user_custom_loop = None
-message_target = None  # 用于存储消息发送目标
+from .config_manager import ConfigManager
+from .image_manager import ImageManager
+from .command_handler import CommandHelper
+from .scheduler import Scheduler
 
 
-@register("moyuren", "quirrel", "一个简单的摸鱼人日历插件", "1.2.1",
+@register("moyuren", "quirrel", "一个功能完善的摸鱼人日历插件，支持精确定时发送", "2.1.0",
           "https://github.com/Quirrel-zh/astrbot_plugin_moyuren")
-class MyPlugin(Star):
+class MoyuRenPlugin(Star):
+    """摸鱼人日历插件
+    
+    功能：
+    - 在指定时间自动发送摸鱼人日历
+    - 支持精确定时，无需轮询检测
+    - 支持多群组不同时间设置
+    - 支持自定义触发词，默认为"摸鱼"
+    - 每次随机选择不同的排版样式
+    
+    命令：
+    - /set_time HH:MM - 设置发送时间，格式为24小时制
+    - /reset_time - 重置当前群聊的时间设置
+    - /list_time - 查看当前群聊的时间设置
+    - /next_time - 查看下一次执行的时间
+    - /execute_now - 立即发送摸鱼人日历
+    - /set_trigger 触发词 - 设置触发词，默认为"摸鱼"
+    """
     def __init__(self, context: Context):
         super().__init__(context)
-        asyncio.get_event_loop().create_task(self.scheduled_task())
-        self.temp_dir = tempfile.mkdtemp()  # 创建临时目录
-
-    async def get_moyu_image(self):
-        '''获取摸鱼人日历图片'''
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get('https://api.52vmy.cn/api/wl/moyu') as res:
-                    if res.status != 200:
-                        logger.error(f"API请求失败: {res.status}")
-                        return None
-                    # 保存图片到临时文件
-                    image_data = await res.read()
-                    temp_path = os.path.join(self.temp_dir, 'moyu.jpg')
-                    with open(temp_path, 'wb') as f:
-                        f.write(image_data)
-                    return temp_path
-        except Exception as e:
-            logger.error(f"获取摸鱼图片时出错: {str(e)}")
-            return None
+        self.temp_dir = tempfile.mkdtemp()
+        self.config_file = os.path.join(os.path.dirname(__file__), "config.json")
+        
+        # 初始化各个管理器
+        logger.info("开始初始化摸鱼人插件...")
+        self.config_manager = ConfigManager(self.config_file)
+        self.image_manager = ImageManager(self.temp_dir)
+        self.scheduler = Scheduler(self.config_manager, self.image_manager, context)
+        self.command_helper = CommandHelper(self.config_manager, self.image_manager, context, self.scheduler)
+        
+        # 加载配置
+        logger.info("加载摸鱼人插件配置...")
+        self.config_manager.load_config()
+        logger.info(f"当前配置: {self.config_manager.group_settings}")
+        
+        # 启动定时任务
+        logger.info("启动摸鱼人插件定时任务...")
+        self.scheduler.start()
+        # 立即更新任务队列
+        self.scheduler.update_task_queue()
+        logger.info("摸鱼人插件初始化完成")
+        
+        # 保存实例引用
+        MoyuRenPlugin._instance = self
 
     @filter.command("set_time")
-    async def set_time(self, event: AstrMessageEvent, time: str, loop: int = 1):
-        '''设置发送摸鱼图片的时间 格式为 HH:MM或HHMM 后面可跟检测间隔（单位分钟，默认为1，不建议太久可能会导致跳过）'''
-        global user_custom_time, user_custom_loop, message_target
-        time = time.strip()
-        try:
-            # 尝试处理 HH:MM 格式
-            hour, minute = map(int, time.split(':'))
-            if hour < 0 or hour > 23 or minute < 0 or minute > 59:
-                yield event.plain_result("时间格式错误，请输入正确的格式，例如：09:00或0900")
-                return
-            # 统一存储为 HH:MM 格式
-            user_custom_time = f"{hour:02d}:{minute:02d}"
-            user_custom_loop = loop
-            # 保存消息发送目标
-            message_target = event.unified_msg_origin
-            yield event.plain_result(f"自定义时间已设置为: {user_custom_time}，每{loop}分钟检测一次")
-        except ValueError:
-            try:
-                '''如果用户输入的时间格式为 HHMM'''
-                if len(time) == 4:
-                    hour = int(time[:2])
-                    minute = int(time[2:])
-                    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
-                        yield event.plain_result("时间格式错误，请输入正确的格式，例如：09:00或0900")
-                        return
-                    # 统一存储为 HH:MM 格式
-                    user_custom_time = f"{hour:02d}:{minute:02d}"
-                    user_custom_loop = loop
-                    # 保存消息发送目标
-                    message_target = event.unified_msg_origin
-                    yield event.plain_result(f"自定义时间已设置为: {user_custom_time}，每{loop}分钟检测一次")
-                else:
-                    yield event.plain_result("时间格式错误，请输入正确的格式，例如：09:00或0900")
-            except ValueError:
-                yield event.plain_result("时间格式错误，请输入正确的格式，例如：09:00或0900")
+    async def set_time(self, event: AstrMessageEvent, time: str):
+        """设置发送摸鱼图片的时间 格式为 HH:MM或HHMM"""
+        async for result in self.command_helper.handle_set_time(event, time):
+            yield result
 
     @filter.command("reset_time")
     async def reset_time(self, event: AstrMessageEvent):
-        '''重置发送摸鱼图片的时间'''
-        global user_custom_time, message_target
-        user_custom_time = None
-        message_target = None
-        yield event.plain_result("自定义时间已重置")
+        """重置发送摸鱼图片的时间"""
+        async for result in self.command_helper.handle_reset_time(event):
+            yield result
+
+    @filter.command("list_time")
+    async def list_time(self, event: AstrMessageEvent):
+        """列出当前群聊的时间设置"""
+        async for result in self.command_helper.handle_list_time(event):
+            yield result
+
+    @filter.command("set_trigger")
+    async def set_trigger(self, event: AstrMessageEvent, trigger: str):
+        """设置触发词，默认为"摸鱼" """
+        async for result in self.command_helper.handle_set_trigger(event, trigger):
+            yield result
 
     @filter.command("execute_now")
     async def execute_now(self, event: AstrMessageEvent):
-        '''立即发送！'''
-        image_path = await self.get_moyu_image()
-        if not image_path:
-            yield event.plain_result("获取摸鱼图片失败，请稍后再试")
-            return
+        """立即发送摸鱼人日历"""
+        async for result in self.command_helper.handle_execute_now(event):
+            yield result
 
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        chain = [
-            Plain("📅 摸鱼人日历\n"),
-            Plain("━━━━━━━━━━\n"),
-            Plain(f"🎯 {current_time}\n"),
-            Plain("━━━━━━━━━━\n"),
-            Image.fromFileSystem(image_path),  # 使用 fromFileSystem 方法
-            Plain("\n⏰ 摸鱼提醒：工作再累，一定不要忘记摸鱼哦 ~")
-        ]
-        yield event.chain_result(chain)
+    @event_message_type(EventMessageType.ALL)
+    async def on_all_message(self, event: AstrMessageEvent):
+        """处理消息事件，检测触发词"""
+        await self.command_helper.handle_message(event)
+    
+    async def terminate(self):
+        """终止插件的所有活动"""
+        try:
+            # 获取实例
+            instance = getattr(self, '_instance', None)
+            if not instance:
+                logger.error("找不到摸鱼人插件实例，无法正常终止")
+                return
+                
+            # 停止定时任务
+            await instance.scheduler.stop()
+            logger.info("摸鱼人日历定时任务已停止")
 
-    async def scheduled_task(self):
-        while True:
-            try:
-                # 如果没有设置时间或目标，就跳过
-                if not user_custom_time or not message_target:
-                    await asyncio.sleep(60)
-                    continue
-
-                now = datetime.datetime.now()
-                target_hour, target_minute = map(int, user_custom_time.split(':'))
-
-                if now.hour == target_hour and now.minute == target_minute:
-                    image_path = await self.get_moyu_image()
-                    if image_path:
-                        current_time = now.strftime("%Y-%m-%d %H:%M")
-                        chain = MessageChain()
-                        chain.chain.extend([
-                            Plain("📅 摸鱼人日历\n"),
-                            Plain("━━━━━━━━━━\n"),
-                            Plain(f"🎯 {current_time}\n"),
-                            Plain("━━━━━━━━━━\n"),
-                            Image.fromFileSystem(image_path),  # 使用 fromFileSystem 方法
-                            Plain("\n⏰ 摸鱼提醒：工作再累，一定不要忘记摸鱼哦 ~")
-                        ])
-                        try:
-                            await self.context.send_message(message_target, chain)
-                        except Exception as e:
-                            logger.error(f"发送消息失败：{str(e)}")
-                        # 等待一分钟，避免在同一分钟内重复发送
-                        await asyncio.sleep(60)
-                    else:
-                        logger.error("获取图片失败，跳过本次发送")
-
-                sleep_time = user_custom_loop * 60 if user_custom_loop else 60
-                await asyncio.sleep(sleep_time)
-            except Exception as e:
-                logger.error(f"定时任务出错: {str(e)}")
-                logger.error(f"错误详情: {e.__class__.__name__}")
-                import traceback
-                logger.error(f"堆栈信息: {traceback.format_exc()}")
-                await asyncio.sleep(60)  # 出错后等待1分钟再试
+            # 清理临时文件
+            if hasattr(instance, 'temp_dir') and os.path.exists(instance.temp_dir):
+                for file in os.listdir(instance.temp_dir):
+                    try:
+                        os.remove(os.path.join(instance.temp_dir, file))
+                    except Exception as e:
+                        logger.error(f"删除临时文件失败: {str(e)}")
+                try:
+                    os.rmdir(instance.temp_dir)
+                    logger.info("已清理摸鱼人插件临时文件")
+                except Exception as e:
+                    logger.error(f"删除临时目录失败: {str(e)}")
+        except Exception as e:
+            logger.error(f"终止插件时出错: {str(e)}")
+            logger.error(traceback.format_exc())
 

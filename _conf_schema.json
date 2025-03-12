@@ -1,0 +1,75 @@
+{
+  "api_endpoints": {
+    "description": "摸鱼人日历API端点列表，按优先顺序排列",
+    "type": "list",
+    "hint": "API端点按优先顺序排列，遇到故障会依次尝试下一个",
+    "items": {
+      "type": "string"
+    },
+    "default": [
+      "https://api.vvhan.com/api/moyu?type=json",
+      "https://api.52vmy.cn/api/wl/moyu"
+    ]
+  },
+  "templates": {
+    "description": "消息模板列表",
+    "type": "list",
+    "hint": "插件会随机选择其中一个模板，如想固定一种样式，只保留一个模板即可",
+    "items": {
+      "type": "object",
+      "items": {
+        "name": {
+          "type": "string",
+          "description": "模板名称"
+        },
+        "format": {
+          "type": "string",
+          "description": "模板格式，支持{time}变量"
+        }
+      }
+    },
+    "default": [
+      {
+        "name": "默认样式",
+        "format": "摸鱼人日历\n当前时间：{time}"
+      },
+      {
+        "name": "可爱样式",
+        "format": "🐟 摸鱼人日历 🐟\n⏰ 当前时间：{time}\n记得休息哦~ (◕‿◕✿)"
+      },
+      {
+        "name": "商务样式",
+        "format": "【摸鱼人日历】\n━━━━━━━━━\n⏲ 时间：{time}\n━━━━━━━━━"
+      },
+      {
+        "name": "简约样式",
+        "format": "▎摸鱼人日历\n▎{time}"
+      }
+    ]
+  },
+  "default_template": {
+    "description": "默认消息模板",
+    "type": "object",
+    "hint": "当没有其他模板可用时使用的默认模板",
+    "items": {
+      "name": {
+        "type": "string",
+        "description": "模板名称"
+      },
+      "format": {
+        "type": "string",
+        "description": "模板格式，支持{time}变量"
+      }
+    },
+    "default": {
+      "name": "默认样式",
+      "format": "摸鱼人日历\n当前时间：{time}"
+    }
+  },
+  "request_timeout": {
+    "description": "API请求超时时间（秒）",
+    "type": "float",
+    "hint": "请求API的最大等待时间，超时后会尝试下一个API",
+    "default": 5.0
+  }
+} 

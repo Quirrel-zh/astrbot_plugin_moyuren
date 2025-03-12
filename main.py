@@ -12,7 +12,7 @@ from .command_handler import CommandHelper
 from .scheduler import Scheduler
 
 
-@register("moyuren", "quirrel", "一个功能完善的摸鱼人日历插件，支持精确定时发送", "2.1.0",
+@register("moyuren", "quirrel", "一个功能完善的摸鱼人日历插件", "2.3.0",
           "https://github.com/Quirrel-zh/astrbot_plugin_moyuren")
 class MoyuRenPlugin(Star):
     """摸鱼人日历插件
@@ -23,6 +23,7 @@ class MoyuRenPlugin(Star):
     - 支持多群组不同时间设置
     - 支持自定义触发词，默认为"摸鱼"
     - 每次随机选择不同的排版样式
+    - 支持自定义API端点和消息模板
     
     命令：
     - /set_time HH:MM - 设置发送时间，格式为24小时制
@@ -32,7 +33,7 @@ class MoyuRenPlugin(Star):
     - /execute_now - 立即发送摸鱼人日历
     - /set_trigger 触发词 - 设置触发词，默认为"摸鱼"
     """
-    def __init__(self, context: Context):
+    def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
         self.temp_dir = tempfile.mkdtemp()
         self.config_file = os.path.join(os.path.dirname(__file__), "config.json")
@@ -40,7 +41,12 @@ class MoyuRenPlugin(Star):
         # 初始化各个管理器
         logger.info("开始初始化摸鱼人插件...")
         self.config_manager = ConfigManager(self.config_file)
-        self.image_manager = ImageManager(self.temp_dir)
+        
+        # 使用从AstrBot获取的配置（通过_conf_schema.json）
+        self.plugin_config = config or {}
+        logger.info(f"加载插件配置: {self.plugin_config}")
+        
+        self.image_manager = ImageManager(self.temp_dir, self.plugin_config)
         self.scheduler = Scheduler(self.config_manager, self.image_manager, context)
         self.command_helper = CommandHelper(self.config_manager, self.image_manager, context, self.scheduler)
         

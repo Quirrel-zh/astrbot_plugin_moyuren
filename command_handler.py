@@ -222,14 +222,21 @@ class CommandHelper:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
             
             # 获取消息内容
-            message_data = self.image_manager.create_moyu_message(image_path, current_time)
+            template = self.image_manager._get_random_template()
+            text = template["format"].format(time=current_time)
             
-            # 使用 make_result 构建结果
-            result = event.make_result()
-            result.message(message_data["text"])
-            result.file_image(message_data["image_path"])
+            logger.info(f"使用模板: {template['name']}")
             
-            yield result
+            # 创建简单的消息段列表传递给chain_result
+            from astrbot.api.message_components import Plain, Image
+            message_segments = [
+                Plain(text),
+                Image(file=image_path)
+            ]
+            
+            # 使用消息段列表
+            yield event.chain_result(message_segments)
+            
         except Exception as e:
             logger.error(f"执行立即发送命令时出错: {str(e)}")
             logger.error(traceback.format_exc())
@@ -259,14 +266,20 @@ class CommandHelper:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
             
             # 获取消息内容
-            message_data = self.image_manager.create_moyu_message(image_path, current_time)
+            template = self.image_manager._get_random_template()
+            text = template["format"].format(time=current_time)
             
-            # 使用 MessageChain 构建消息
-            chain = MessageChain()
-            chain.message(message_data["text"])
-            chain.file_image(message_data["image_path"])
+            # 创建消息段列表
+            from astrbot.api.message_components import Plain, Image
+            message_segments = [
+                Plain(text),
+                Image(file=image_path)
+            ]
             
-            await self.context.send_message(target, chain)
+            # 使用send_message直接发送消息段列表
+            from astrbot.api.event import MessageChain
+            message_chain = MessageChain(message_segments)
+            await self.context.send_message(target, message_chain)
         except Exception as e:
             logger.error(f"发送摸鱼人日历失败: {str(e)}")
             logger.error(traceback.format_exc()) 

@@ -111,17 +111,24 @@ class Scheduler:
             current_datetime = now.strftime("%Y-%m-%d %H:%M")
             
             # 获取消息内容
-            message_data = self.image_manager.create_moyu_message(image_path, current_datetime)
+            template = self.image_manager._get_random_template()
+            text = template["format"].format(time=current_datetime)
             
-            # 使用 MessageChain 构建消息
+            logger.info(f"使用模板: {template['name']}")
+            
+            # 创建消息段列表
+            from astrbot.api.message_components import Plain, Image
+            message_segments = [
+                Plain(text),
+                Image(file=image_path)
+            ]
+            
+            # 使用send_message发送消息
             from astrbot.api.event import MessageChain
-            
-            chain = MessageChain()
-            chain.message(message_data["text"])
-            chain.file_image(message_data["image_path"])
+            message_chain = MessageChain(message_segments)
             
             try:
-                await self.context.send_message(normalized_target, chain)
+                await self.context.send_message(normalized_target, message_chain)
                 logger.info(f"已向 {normalized_target} 发送摸鱼人日历")
             except Exception as e:
                 logger.error(f"向 {normalized_target} 发送消息失败：{str(e)}")

@@ -28,62 +28,45 @@ def image_operation_handler(func):
     return wrapper
 
 class ImageManager:
-    def __init__(self, temp_dir: str):
-        self.temp_dir = temp_dir
-        self.template_file = os.path.join(os.path.dirname(__file__), "templates.json")
-        self.templates = self._load_templates()
+    def __init__(self, temp_dir: str, config: Dict):
+        """初始化图片管理器
         
-    def _load_templates(self) -> Dict:
-        """加载消息模板"""
-        try:
-            if os.path.exists(self.template_file):
-                with open(self.template_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            else:
-                logger.warning(f"模板文件 {self.template_file} 不存在，将使用默认模板")
-                return {
-                    "templates": [],
-                    "default_template": {
-                        "name": "默认样式",
-                        "format": "摸鱼人日历\n当前时间：{time}"
-                    }
-                }
-        except Exception as e:
-            logger.error(f"加载模板文件失败: {str(e)}")
-            return {
-                "templates": [],
-                "default_template": {
-                    "name": "默认样式",
-                    "format": "摸鱼人日历\n当前时间：{time}"
-                }
-            }
-
+        Args:
+            temp_dir: 临时目录路径
+            config: 从_conf_schema.json加载的配置
+        """
+        self.temp_dir = temp_dir
+        self.config = config
+        self.templates = config.get("templates", [])
+        self.default_template = config.get("default_template", {
+            "name": "默认样式",
+            "format": "摸鱼人日历\n当前时间：{time}"
+        })
+        self.api_endpoints = config.get("api_endpoints", [
+            "https://api.vvhan.com/api/moyu?type=json",
+            "https://api.52vmy.cn/api/wl/moyu"
+        ])
+        self.request_timeout = config.get("request_timeout", 5)
+        
+        logger.info(f"已加载API端点: {len(self.api_endpoints)}个")
+        logger.info(f"已加载消息模板: {len(self.templates)}个")
+        
     def _get_random_template(self) -> Dict:
-        """随机获取一个消息模板"""
-        templates = self.templates.get("templates", [])
-        if not templates:
-            return self.templates.get("default_template", {
-                "name": "默认样式",
-                "format": "摸鱼人日历\n当前时间：{time}"
-            })
-        return random.choice(templates)
+        """获取随机消息模板"""
+        if not self.templates:
+            return self.default_template
+        return random.choice(self.templates)
 
     @image_operation_handler
     async def get_moyu_image(self) -> Optional[str]:
         """获取摸鱼人日历图片"""
-        # 定义API端点
-        api_endpoints = [
-            "https://api.vvhan.com/api/moyu?type=json",
-            "https://api.52vmy.cn/api/wl/moyu"
-        ]
-        
-        for api_url in api_endpoints:
+        for api_url in self.api_endpoints:
             try:
-                # 设置较短的超时时间
-                timeout = aiohttp.ClientTimeout(total=5)
+                # 设置配置中指定的超时时间
+                timeout = aiohttp.ClientTimeout(total=self.request_timeout)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
-                    if "vvhan.com" in api_url:
-                        # 处理 vvhan.com API
+                    if "vvhan.com" in api_url or ("?type=json" in api_url or ".json" in api_url):
+                        # 处理返回JSON的API
                         try:
                             async with session.get(api_url) as response:
                                 if response.status == 200:
@@ -167,27 +150,4 @@ class ImageManager:
         except Exception as e:
             logger.error(f"下载图片时出错: {str(e)}")
             logger.error(traceback.format_exc())
-            return None
-
-    def create_moyu_message(self, image_path: str, current_time: str) -> dict:
-        """创建摸鱼人日历消息"""
-        try:
-            # 获取随机模板
-            template = self._get_random_template()
-            
-            # 格式化文本
-            formatted_text = template['format'].format(time=current_time)
-            
-            # 返回文本和图片路径
-            return {
-                "text": formatted_text,
-                "image_path": image_path
-            }
-        except Exception as e:
-            logger.error(f"创建摸鱼人日历消息失败: {str(e)}")
-            logger.error(traceback.format_exc())
-            # 发生错误时使用默认格式
-            return {
-                "text": f"摸鱼人日历\n当前时间：{current_time}",
-                "image_path": image_path
-            } 
+            return None 

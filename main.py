@@ -16,7 +16,7 @@ from .scheduler import Scheduler
     "moyuren",
     "quirrel",
     "一个功能完善的摸鱼人日历插件",
-    "2.3.1",
+    "2.3.2",
     "https://github.com/Quirrel-zh/astrbot_plugin_moyuren",
 )
 class MoyuRenPlugin(Star):

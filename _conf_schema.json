@@ -70,6 +70,6 @@
     "description": "API请求超时时间（秒）",
     "type": "float",
     "hint": "请求API的最大等待时间，超时后会尝试下一个API",
-    "default": 5.0
+    "default": 10.0
   }
 } 

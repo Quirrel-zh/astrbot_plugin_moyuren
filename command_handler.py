@@ -1,3 +1,5 @@
+import json
+
 from astrbot.api.event import AstrMessageEvent, MessageEventResult, MessageChain
 from astrbot.api import logger
 from datetime import datetime, timedelta
@@ -32,11 +34,12 @@ def command_error_handler(func):
 
 
 class CommandHelper:
-    def __init__(self, config_manager, image_manager, context, scheduler=None):
+    def __init__(self, config_manager, image_manager, user_manager, context, scheduler=None):
         self.config_manager = config_manager
         self.image_manager = image_manager
         self.context = context
         self.scheduler = scheduler  # 添加调度器引用
+        self.user_manager = user_manager
 
     def parse_time_format(self, time_str: str) -> tuple[int, int]:
         """解析时间格式，支持HH:MM和HHMM格式"""
@@ -76,11 +79,15 @@ class CommandHelper:
 
     @command_error_handler
     async def handle_set_time(
-        self, event: AstrMessageEvent, time_str: str
+            self, event: AstrMessageEvent, time_str: str
     ) -> AsyncGenerator[MessageEventResult, None]:
         """处理设置时间命令"""
         try:
-            # 格式化时间字符串
+            if not self.user_manager.is_manager(event):
+                yield event.plain_result("权限不足")
+                return
+
+                # 格式化时间字符串
             if len(time_str) == 4:  # HHMM格式
                 time_str = f"{time_str[:2]}:{time_str[2:]}"
             elif len(time_str) != 5:  # 不是HH:MM格式
@@ -152,9 +159,13 @@ class CommandHelper:
 
     @command_error_handler
     async def handle_reset_time(
-        self, event: AstrMessageEvent
+            self, event: AstrMessageEvent
     ) -> AsyncGenerator[MessageEventResult, None]:
         """取消定时发送摸鱼图片的设置"""
+        if not self.user_manager.is_manager(event):
+            yield event.plain_result("权限不足")
+            return
+
         target = self.normalize_session_id(event)
         if target not in self.config_manager.group_settings:
             yield event.make_result().message("❌ 当前群聊未设置自定义时间")
@@ -170,7 +181,7 @@ class CommandHelper:
 
         # 保留触发词设置
         trigger_word = self.config_manager.group_settings[target].get(
-            "trigger_word", "摸鱼"
+            "trigger_word", "摸鱼日历"
         )
 
         # 重置时间设置
@@ -198,8 +209,12 @@ class CommandHelper:
 
     @command_error_handler
     async def handle_list_time(
-        self, event: AstrMessageEvent
+            self, event: AstrMessageEvent
     ) -> AsyncGenerator[MessageEventResult, None]:
+        if not self.user_manager.is_manager(event):
+            yield event.plain_result("权限不足")
+            return
+
         """列出当前群聊的时间设置"""
         target = self.normalize_session_id(event)
         if target not in self.config_manager.group_settings:
@@ -207,16 +222,39 @@ class CommandHelper:
             return
 
         settings = self.config_manager.group_settings[target]
-        trigger_word = settings.get("trigger_word", "摸鱼")
+        trigger_word = settings.get("trigger_word", "摸鱼日历")
         time_setting = settings.get("custom_time", "未设置")
         yield event.make_result().message(
             f"当前群聊设置:\n发送时间: {time_setting}\n触发词: {trigger_word}"
         )
 
     @command_error_handler
-    async def handle_set_trigger(
-        self, event: AstrMessageEvent, trigger: str
+    async def handle_list_all_time(
+            self, event: AstrMessageEvent
     ) -> AsyncGenerator[MessageEventResult, None]:
+        if not self.user_manager.is_manager(event):
+            yield event.plain_result("权限不足")
+            return
+
+        """列出所有摸鱼日历的时间设置"""
+        if len(self.config_manager.group_settings) == 0:
+            yield event.make_result().message("未设置任何配置")
+            return
+
+        settings = self.config_manager.group_settings
+        data = json.dumps(settings)
+        yield event.make_result().message(
+            f"所有摸鱼日历的时间设置:\n: {data}"
+        )
+
+    @command_error_handler
+    async def handle_set_trigger(
+            self, event: AstrMessageEvent, trigger: str
+    ) -> AsyncGenerator[MessageEventResult, None]:
+        if not self.user_manager.is_manager(event):
+            yield event.plain_result("权限不足")
+            return
+
         """设置触发词，默认为"摸鱼" """
         if not trigger or len(trigger.strip()) == 0:
             raise ValueError("触发词不能为空")
@@ -234,9 +272,13 @@ class CommandHelper:
 
     @command_error_handler
     async def handle_execute_now(
-        self, event: AstrMessageEvent
+            self, event: AstrMessageEvent
     ) -> AsyncGenerator[MessageEventResult, None]:
-        """立即发送摸鱼人日历"""
+        if not self.user_manager.is_manager(event):
+            yield event.plain_result("权限不足")
+            return
+
+        """立即发送摸鱼日历"""
         try:
             image_path = await self.image_manager.get_moyu_image()
             if not image_path:
@@ -259,7 +301,7 @@ class CommandHelper:
             except Exception as e:
                 logger.error(f"格式化模板时出错: {str(e)}")
                 # 使用一个简单的格式作为后备
-                text = f"摸鱼人日历\n当前时间：{current_time}"
+                text = f"摸鱼日历\n当前时间：{current_time}"
 
             # 创建简单的消息段列表传递给chain_result
             from astrbot.api.message_components import Plain, Image
@@ -273,7 +315,7 @@ class CommandHelper:
             logger.error(f"执行立即发送命令时出错: {str(e)}")
             logger.error(traceback.format_exc())
             yield event.make_result().message(
-                "发送摸鱼人日历失败，请查看日志获取详细信息"
+                "发送摸鱼日历失败，请查看日志获取详细信息"
             )
 
     async def handle_message(self, event: AstrMessageEvent) -> None:
@@ -284,14 +326,14 @@ class CommandHelper:
 
         # 如果是命令消息或群未配置，则跳过处理
         if (
-            message_text.startswith("/")
-            or target not in self.config_manager.group_settings
+                message_text.startswith("/")
+                or target not in self.config_manager.group_settings
         ):
             return
 
         # 获取触发词并检查
         trigger_word = self.config_manager.group_settings[target].get(
-            "trigger_word", "摸鱼"
+            "trigger_word", "摸鱼日历"
         )
         if trigger_word not in message_text:
             return
@@ -318,7 +360,7 @@ class CommandHelper:
             except Exception as e:
                 logger.error(f"触发词响应 - 格式化模板时出错: {str(e)}")
                 # 使用一个简单的格式作为后备
-                text = f"摸鱼人日历\n当前时间：{current_time}"
+                text = f"摸鱼日历\n当前时间：{current_time}"
 
             # 创建消息段列表
             from astrbot.api.message_components import Plain, Image
@@ -331,5 +373,17 @@ class CommandHelper:
             message_chain = MessageChain(message_segments)
             await self.context.send_message(target, message_chain)
         except Exception as e:
-            logger.error(f"发送摸鱼人日历失败: {str(e)}")
+            logger.error(f"发送摸鱼日历失败: {str(e)}")
             logger.error(traceback.format_exc())
+
+    @command_error_handler
+    async def handle_user_manager(
+            self, event: AstrMessageEvent
+    ) -> AsyncGenerator[MessageEventResult, None]:
+        if self.user_manager.has_manager():
+            logger.info(f"set_master failed: {event.get_sender_id()}, 已设置的为：{self.user_manager.manager_id}")
+            yield event.plain_result("failed")
+            return
+        self.user_manager.save_manager(event)
+        logger.info(f"set_master success, 已设置的为：{self.user_manager.manager_id}")
+        yield event.plain_result("success")

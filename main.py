@@ -10,20 +10,21 @@ from .config_manager import ConfigManager
 from .image_manager import ImageManager
 from .command_handler import CommandHelper
 from .scheduler import Scheduler
+from .user_manager import UserManager
 
 
 @register(
     "moyuren",
     "quirrel",
-    "一个功能完善的摸鱼人日历插件",
+    "一个功能完善的摸鱼日历插件",
     "2.3.2",
     "https://github.com/Quirrel-zh/astrbot_plugin_moyuren",
 )
 class MoyuRenPlugin(Star):
-    """摸鱼人日历插件
+    """摸鱼日历插件
 
     功能：
-    - 在指定时间自动发送摸鱼人日历
+    - 在指定时间自动发送摸鱼日历
     - 支持精确定时，无需轮询检测
     - 支持多群组不同时间设置
     - 支持自定义触发词，默认为"摸鱼"
@@ -35,8 +36,8 @@ class MoyuRenPlugin(Star):
     - /reset_time - 重置当前群聊的时间设置
     - /list_time - 查看当前群聊的时间设置
     - /next_time - 查看下一次执行的时间
-    - /execute_now - 立即发送摸鱼人日历
-    - /set_trigger 触发词 - 设置触发词，默认为"摸鱼"
+    - /execute_now - 立即发送摸鱼日历
+    - /set_trigger 触发词 - 设置触发词，默认为"摸鱼日历"
     """
 
     def __init__(self, context: Context, config: dict = None):
@@ -45,7 +46,7 @@ class MoyuRenPlugin(Star):
         self.config_file = os.path.join(os.path.dirname(__file__), "config.json")
 
         # 初始化各个管理器
-        logger.info("开始初始化摸鱼人插件...")
+        logger.info("开始初始化摸鱼插件...")
         self.config_manager = ConfigManager(self.config_file)
 
         # 使用从AstrBot获取的配置（通过_conf_schema.json）
@@ -54,21 +55,22 @@ class MoyuRenPlugin(Star):
 
         self.image_manager = ImageManager(self.temp_dir, self.plugin_config)
         self.scheduler = Scheduler(self.config_manager, self.image_manager, context)
+        self.user_manager = UserManager(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'managers.json'))
         self.command_helper = CommandHelper(
-            self.config_manager, self.image_manager, context, self.scheduler
+            self.config_manager, self.image_manager, self.user_manager, context, self.scheduler
         )
 
         # 加载配置
-        logger.info("加载摸鱼人插件配置...")
+        logger.info("加载摸鱼插件配置...")
         self.config_manager.load_config()
         logger.info(f"当前配置: {self.config_manager.group_settings}")
 
         # 启动定时任务
-        logger.info("启动摸鱼人插件定时任务...")
+        logger.info("启动摸鱼插件定时任务...")
         self.scheduler.start()
         # 立即更新任务队列
         self.scheduler.update_task_queue()
-        logger.info("摸鱼人插件初始化完成")
+        logger.info("摸鱼插件初始化完成")
 
         # 保存实例引用
         MoyuRenPlugin._instance = self
@@ -91,6 +93,12 @@ class MoyuRenPlugin(Star):
         async for result in self.command_helper.handle_list_time(event):
             yield result
 
+    @filter.command("list_all_time")
+    async def list_all_time(self, event: AstrMessageEvent):
+        """列出当前群聊的时间设置"""
+        async for result in self.command_helper.handle_list_all_time(event):
+            yield result
+
     @filter.command("set_trigger")
     async def set_trigger(self, event: AstrMessageEvent, trigger: str):
         """设置触发词，默认为"摸鱼" """
@@ -99,8 +107,14 @@ class MoyuRenPlugin(Star):
 
     @filter.command("execute_now")
     async def execute_now(self, event: AstrMessageEvent):
-        """立即发送摸鱼人日历"""
+        """立即发送摸鱼日历"""
         async for result in self.command_helper.handle_execute_now(event):
+            yield result
+
+    @filter.command("set_user_manager")
+    async def set_user_manager(self, event: AstrMessageEvent):
+        """ 设置管理者，只有管理者可以设定摸鱼日历配置 """
+        async for result in self.command_helper.handle_user_manager(event):
             yield result
 
     @event_message_type(EventMessageType.ALL)
@@ -114,12 +128,12 @@ class MoyuRenPlugin(Star):
             # 获取实例
             instance = getattr(self, "_instance", None)
             if not instance:
-                logger.error("找不到摸鱼人插件实例，无法正常终止")
+                logger.error("找不到摸鱼插件实例，无法正常终止")
                 return
 
             # 停止定时任务
             await instance.scheduler.stop()
-            logger.info("摸鱼人日历定时任务已停止")
+            logger.info("摸鱼日历定时任务已停止")
 
             # 清理临时文件
             if hasattr(instance, "temp_dir") and os.path.exists(instance.temp_dir):
@@ -130,7 +144,7 @@ class MoyuRenPlugin(Star):
                         logger.error(f"删除临时文件失败: {str(e)}")
                 try:
                     os.rmdir(instance.temp_dir)
-                    logger.info("已清理摸鱼人插件临时文件")
+                    logger.info("已清理摸鱼插件临时文件")
                 except Exception as e:
                     logger.error(f"删除临时目录失败: {str(e)}")
         except Exception as e:

@@ -111,7 +111,7 @@ class Scheduler:
             # 获取并发送图片
             image_path = await self.image_manager.get_moyu_image()
             if not image_path:
-                logger.error(f"获取摸鱼人日历图片失败")
+                logger.error(f"获取摸鱼日历图片失败")
                 return
 
             current_datetime = now.strftime("%Y-%m-%d %H:%M")
@@ -131,7 +131,7 @@ class Scheduler:
             except Exception as e:
                 logger.error(f"定时任务 - 格式化模板时出错: {str(e)}")
                 # 使用一个简单的格式作为后备
-                text = f"摸鱼人日历\n当前时间：{current_datetime}"
+                text = f"摸鱼日历\n当前时间：{current_datetime}"
 
             # 创建消息段列表
             from astrbot.api.message_components import Plain, Image
@@ -145,7 +145,7 @@ class Scheduler:
 
             try:
                 await self.context.send_message(normalized_target, message_chain)
-                logger.info(f"已向 {normalized_target} 发送摸鱼人日历")
+                logger.info(f"已向 {normalized_target} 发送摸鱼日历")
             except Exception as e:
                 logger.error(f"向 {normalized_target} 发送消息失败：{str(e)}")
                 logger.error(traceback.format_exc())
@@ -304,7 +304,7 @@ class Scheduler:
             except Exception as e:
                 logger.error(f"定时任务 - 格式化模板时出错: {str(e)}")
                 # 使用一个简单的格式作为后备
-                text = f"摸鱼人日历\n当前时间：{current_time}"
+                text = f"摸鱼日历\n当前时间：{current_time}"
 
             # 创建消息
             from astrbot.api.message_components import Plain, Image
@@ -317,7 +317,7 @@ class Scheduler:
             message_chain = MessageChain(message_segments)
             await self.context.send_message(session_id, message_chain)
 
-            logger.info(f"已向 {session_id} 发送摸鱼人日历")
+            logger.info(f"已向 {session_id} 发送摸鱼日历")
 
         except Exception as e:
             logger.error(f"发送定时消息失败: {str(e)}")

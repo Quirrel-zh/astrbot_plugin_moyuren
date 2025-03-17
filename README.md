@@ -1,10 +1,12 @@
-# 摸鱼人日历插件
+# 摸鱼日历插件
 ![](https://private-user-images.githubusercontent.com/37870767/411299021-ead4c551-fc3c-48f7-a6f7-afbfdb820512.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDE3NjMwNDUsIm5iZiI6MTc0MTc2Mjc0NSwicGF0aCI6Ii8zNzg3MDc2Ny80MTEyOTkwMjEtZWFkNGM1NTEtZmMzYy00OGY3LWE2ZjctYWZiZmRiODIwNTEyLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTAzMTIlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwMzEyVDA2NTkwNVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTNiNGYyZTgxMjFjOWMwZmFkMTQ1NDFhNjhiZDQwZWJiYjg1NDdmYmZkMDNlYTUwOWE3MDFiOTMwNzM5NWFjOTEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.MXqbLD4Rbn-LJsONC1os5DGpCFTKnQ8uEZnl3D8H0B8)
 
-一个功能完善的 AstrBot 摸鱼人日历插件，支持精确定时发送、多群组不同时间设置、自定义触发词，并提供多种精美排版样式。
+根据原作者【Quirrel-zh】 https://github.com/Quirrel-zh/astrbot_plugin_moyuren 项目修改而来
+
+一个功能完善的 AstrBot 摸鱼日历插件，支持精确定时发送、多群组不同时间设置、自定义触发词，并提供多种精美排版样式。
 
 ## 功能特点
-
+- 简单的权限管理，第一个调用/set_user_manager的用户被设置为管理者
 - 🎯 精确定时发送，无需轮询检测
 - 🌟 支持多群组不同时间设置
 - 🔧 支持自定义触发词（默认为"摸鱼"）
@@ -24,8 +26,10 @@
   - 设置成功后会显示下一次发送的等待时间
 - `/reset_time` - 取消当前群聊的定时设置（触发词仍可使用）
 - `/list_time` - 查看当前群聊的时间设置与触发词
-- `/execute_now` - 立即发送摸鱼人日历
-- `/set_trigger 触发词` - 设置触发词，默认为"摸鱼"
+- `/list_all_time` - 查看当前群聊的时间设置与触发词
+- `/execute_now` - 立即发送摸鱼日历
+- `/set_user_manager` - 设置管理者
+- `/set_trigger 触发词` - 设置触发词，默认为"摸鱼日历"
 
 ### 触发方式
 

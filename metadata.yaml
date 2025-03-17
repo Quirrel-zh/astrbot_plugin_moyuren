@@ -1,19 +1,21 @@
-name: 摸鱼人日历 # 这是你的插件的唯一识别名。
-desc: 一个功能完善的摸鱼人日历插件，支持精确定时发送、多群组不同时间设置、自定义触发词，并提供多种排版样式。 # 插件简短描述
+name: 摸鱼日历 # 这是你的插件的唯一识别名。
+desc: 一个功能完善的摸鱼日历插件，支持精确定时发送、多群组不同时间设置、自定义触发词，并提供多种排版样式。 # 插件简短描述
 help: |
   命令列表：
   - /set_time HH:MM - 设置发送时间，格式为24小时制，如 09:30 或 0930
   - /reset_time - 取消当前群聊的定时设置（触发词仍可使用）
   - /list_time - 查看当前群聊的时间设置
-  - /execute_now - 立即发送摸鱼人日历
+  - /execute_now - 立即发送摸鱼日历
+  - /set_user_manager - 设置管理者
   - /set_trigger 触发词 - 设置触发词，默认为"摸鱼"
   
   特性：
+  - 简单的权限管理，第一个调用/set_user_manager的用户被设置为管理者
   - 支持精确定时，无需轮询检测
   - 支持多群组不同时间设置
   - 支持自定义触发词
   - 每次随机选择不同的排版样式
   - 多API源支持，自动故障转移
-version: v2.3.2 # 插件版本号。格式：v1.1.1 或者 v1.1
-author: quirrel-zh # 作者
-repo: https://github.com/quirrel-zh/astrbot_plugin_moyuren # 插件的仓库地址
+version: v1.0.0 # 插件版本号。格式：v1.1.1 或者 v1.1
+author: NiceAir # 作者
+repo: https://github.com/NiceAir/astrbot_plugin_moyu_calendar # 插件的仓库地址

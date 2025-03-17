@@ -44,7 +44,7 @@ class ImageManager:
         self.templates = config.get("templates", [])
         self.default_template = config.get(
             "default_template",
-            {"name": "默认样式", "format": "摸鱼人日历\n当前时间：{time}"},
+            {"name": "默认样式", "format": "摸鱼日历\n当前时间：{time}"},
         )
         self.api_endpoints = config.get(
             "api_endpoints",
@@ -99,7 +99,7 @@ class ImageManager:
 
     @image_operation_handler
     async def get_moyu_image(self) -> Optional[str]:
-        """获取摸鱼人日历图片"""
+        """获取摸鱼日历图片"""
         api_endpoints = list(self.api_endpoints)
 
         # 所有API都直接返回图片，逐个尝试直到成功

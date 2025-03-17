@@ -74,10 +74,10 @@ class ConfigManager:
 
                 # 加载触发词设置，如果不存在则使用默认值"摸鱼"
                 self.group_settings[target]["trigger_word"] = settings.get(
-                    "trigger_word", "摸鱼"
+                    "trigger_word", "摸鱼日历"
                 )
 
-            logger.info(f"已加载摸鱼人配置: {len(self.group_settings)}个群聊的设置")
+            logger.info(f"已加载摸鱼配置: {len(self.group_settings)}个群聊的设置")
             return True
 
     @config_operation_handler
@@ -95,5 +95,5 @@ class ConfigManager:
 
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(self.group_settings, f, ensure_ascii=False, indent=2)
-        logger.info("摸鱼人配置已保存")
+        logger.info("摸鱼配置已保存")
         return True

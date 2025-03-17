@@ -1,6 +1,6 @@
 {
   "api_endpoints": {
-    "description": "摸鱼人日历API端点列表，按优先顺序排列",
+    "description": "摸鱼日历API端点列表，按优先顺序排列",
     "type": "list",
     "hint": "API端点按优先顺序排列，遇到故障会依次尝试下一个",
     "items": {

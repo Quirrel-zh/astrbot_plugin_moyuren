@@ -54,6 +54,7 @@ class ImageManager:
             ],
         )
         self.request_timeout = config.get("request_timeout", 5)
+        self.current_template_index = 0  # 添加模板索引计数器
 
         # 确保模板列表不为空
         if not self.templates:
@@ -62,8 +63,8 @@ class ImageManager:
         logger.info(f"已加载API端点: {len(self.api_endpoints)}个")
         logger.info(f"已加载消息模板: {len(self.templates)}个")
 
-    def _get_random_template(self) -> Dict:
-        """获取随机消息模板"""
+    def _get_next_template(self) -> Dict:
+        """按顺序获取下一个消息模板"""
         if not self.templates:
             logger.warning("模板列表为空，使用默认模板")
             return self.default_template
@@ -89,11 +90,10 @@ class ImageManager:
             logger.warning("没有有效的模板，使用默认模板")
             return self.default_template
 
-        # 强制使用随机选择，避免每次选择相同模板
-        import time
-
-        random.seed(time.time())  # 使用当前时间作为随机种子
-        template = random.choice(valid_templates)
+        # 按顺序获取模板
+        template = valid_templates[self.current_template_index]
+        # 更新索引，实现循环
+        self.current_template_index = (self.current_template_index + 1) % len(valid_templates)
 
         return template
 

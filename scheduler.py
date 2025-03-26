@@ -117,7 +117,7 @@ class Scheduler:
             current_datetime = now.strftime("%Y-%m-%d %H:%M")
 
             # 获取消息内容
-            template = self.image_manager._get_random_template()
+            template = self.image_manager._get_next_template()
 
             # 确保模板是字典类型并包含必要的键
             if not isinstance(template, dict) or "format" not in template:
@@ -290,7 +290,7 @@ class Scheduler:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
 
             # 获取随机模板
-            template = self.image_manager._get_random_template()
+            template = self.image_manager._get_next_template()
 
             # 确保模板是字典类型并包含必要的键
             if not isinstance(template, dict) or "format" not in template:

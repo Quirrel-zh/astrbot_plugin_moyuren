@@ -12,8 +12,8 @@ help: |
   - 支持精确定时，无需轮询检测
   - 支持多群组不同时间设置
   - 支持自定义触发词
-  - 每次随机选择不同的排版样式
+  - 每次按顺序选择不同的排版样式
   - 多API源支持，自动故障转移
-version: v2.3.2 # 插件版本号。格式：v1.1.1 或者 v1.1
+version: v2.3.3 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: quirrel-zh # 作者
 repo: https://github.com/quirrel-zh/astrbot_plugin_moyuren # 插件的仓库地址

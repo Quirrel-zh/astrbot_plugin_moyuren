@@ -246,7 +246,7 @@ class CommandHelper:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
 
             # 获取消息内容
-            template = self.image_manager._get_random_template()
+            template = self.image_manager._get_next_template()
 
             # 确保模板是字典类型并包含必要的键
             if not isinstance(template, dict) or "format" not in template:
@@ -305,7 +305,7 @@ class CommandHelper:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
 
             # 获取消息内容
-            template = self.image_manager._get_random_template()
+            template = self.image_manager._get_next_template()
 
             # 确保模板是字典类型并包含必要的键
             if not isinstance(template, dict) or "format" not in template:

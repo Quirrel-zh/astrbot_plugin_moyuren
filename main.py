@@ -16,7 +16,7 @@ from .scheduler import Scheduler
     "moyuren",
     "quirrel",
     "一个功能完善的摸鱼人日历插件",
-    "2.3.2",
+    "2.3.3",
     "https://github.com/Quirrel-zh/astrbot_plugin_moyuren",
 )
 class MoyuRenPlugin(Star):
@@ -27,7 +27,7 @@ class MoyuRenPlugin(Star):
     - 支持精确定时，无需轮询检测
     - 支持多群组不同时间设置
     - 支持自定义触发词，默认为"摸鱼"
-    - 每次随机选择不同的排版样式
+    - 每次按顺序选择不同的排版样式
     - 支持自定义API端点和消息模板
 
     命令：
